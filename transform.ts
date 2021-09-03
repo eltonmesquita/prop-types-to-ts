@@ -1,3 +1,4 @@
+import generate from "@babel/generator"
 import type { NodePath } from "ast-types/lib/node-path"
 import type {
   API,
@@ -10,6 +11,7 @@ import type {
   TSAnyKeyword,
   TSFunctionType,
 } from "jscodeshift"
+import transpile from "ts-to-jsdoc"
 
 let j: JSCodeshift
 let options: {
@@ -211,12 +213,23 @@ function createInterface(path: NodePath, componentTypes: CollectedTypes) {
   if (!types) return
 
   // Add the TS types before the function/class
-  getFunctionParent(path).insertBefore(
-    j.tsInterfaceDeclaration(
-      j.identifier(typeName),
-      j.tsInterfaceBody(types.types.map(createPropertySignature))
-    )
+  const ts = j.tsInterfaceDeclaration(
+    j.identifier(typeName),
+    j.tsInterfaceBody(types.types.map(createPropertySignature))
   )
+  // console.log(j.tsTypeAnnotation(j.identifier(typeName)))
+  // console.log(types.types.map(createPropertySignature))
+  // console.log(
+  //   j.tsTypeAnnotation(
+  //     j.identifier(typeName),
+  //     j.tsTypeAssertion(types.types.map(createPropertySignature))
+  //   )
+  // )
+  const { code } = generate(ts)
+  // console.log(code)
+  const annotations = transpile(code, componentName)
+  // console.log(annotations)
+  getFunctionParent(path).insertBefore(annotations)
 
   return typeName
 }
@@ -230,11 +243,11 @@ function addFunctionTSTypes(
     if (!typeName) return
 
     // Add the TS types to the props param
-    path.get("params", 0).value.typeAnnotation = j.tsTypeReference(
-      // For some reason, jscodeshift isn't adding the colon so we have to do
-      // that ourselves.
-      j.identifier(`: ${typeName}`)
-    )
+    // path.get("params", 0).value.typeAnnotation = j.tsTypeReference(
+    //   // For some reason, jscodeshift isn't adding the colon so we have to do
+    //   // that ourselves.
+    //   j.identifier(`: ${typeName}`)
+    // )
   })
 }
 
